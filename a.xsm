@@ -6,6 +6,7 @@
 0
 0
 0
+BRKP
 MOV R0,3
 MOV R1,2
 ADD R0,R1
