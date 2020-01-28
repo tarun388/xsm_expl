@@ -1,0 +1,8 @@
+begin
+		read(n);
+		while( n >= 1 ) do
+			read(m);
+			write(res);
+			n = n-1;
+		endwhile;
+end

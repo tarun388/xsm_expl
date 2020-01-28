@@ -26,6 +26,8 @@ int getReg();
 
 void freeReg();
 
+int getLabel();
+
 void print(FILE *fp,int reg1);
 
 void reading(FILE *fp,int addrs);

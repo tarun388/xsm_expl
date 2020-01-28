@@ -6,6 +6,8 @@
   #include "ast.c"
   int yylex(void);
 
+  FILE * yyin;
+
 %}
 
 %union{
@@ -21,8 +23,10 @@
 %%
 
 program     :   _BEGIN Slist END ';'            {$$ = $2;
-                                                //genxsm($2);
+
                                                 printf("PARSED\n");
+                                                genxsm($2);
+                                                preorder($2);
                                                 }
             |   _BEGIN END ';'                  {$$ = NULL;}
             ;
@@ -100,10 +104,10 @@ E           :   E PLUS E                        {   if(($1->type == _BOOL) || ($
                                                     }
                                                     else $$ = makeOperatorNode(4,3,$1,$3);
                                                 }
-            |   E LT E                          {$$ = makeOperatorNode(16,9,$1,$3);}
-            |   E GT E                          {$$ = makeOperatorNode(16,10,$1,$3);}
-            |   E LE E                          {$$ = makeOperatorNode(16,11,$1,$3);}
-            |   E GE E                          {$$ = makeOperatorNode(16,12,$1,$3);}
+            |   E GT E                          {$$ = makeOperatorNode(16,9,$1,$3);}
+            |   E LT E                          {$$ = makeOperatorNode(16,10,$1,$3);}
+            |   E GE E                          {$$ = makeOperatorNode(16,11,$1,$3);}
+            |   E LE E                          {$$ = makeOperatorNode(16,12,$1,$3);}
             |   E NE E                          {$$ = makeOperatorNode(16,13,$1,$3);}
             |   E EQ E                          {$$ = makeOperatorNode(16,14,$1,$3);}
             |   '(' E ')'                       {$$ = $2;}
@@ -119,10 +123,10 @@ void yyerror(const char *s){
 }
 
 int main(int argc, char *argv[]){
-    //if (arg > 1){
-    //    FILE *fp = fopen(argv[1], "r");
-    //    if(fp) yyin = fp;
-    //}
+    if (argc > 1){
+        FILE *fp = fopen(argv[1], "r");
+        if(fp) yyin = fp;
+    }
     yyparse();
     return 0;
 }

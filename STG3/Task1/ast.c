@@ -105,13 +105,13 @@ struct astnode* makeLoopNode(struct astnode* cond, struct astnode* while_body){
     struct astnode * temp = (struct astnode*)malloc(sizeof(struct astnode));
     temp->varname = NULL;
     temp->nodetype = _WHILE;
-    temp->left = while_body;
-    temp->right = NULL;
+    temp->left = cond;
+    temp->right = while_body;
     return temp;
 }
 
 //global variable denoting free register count number
-int regCount = -1;
+int regCount = 0;
 
 int getReg(){
   return ++regCount;
@@ -119,11 +119,18 @@ int getReg(){
 
 void freeReg(){
   regCount--;
+  // if(freeReg<-1) printf("FREE<-1\n");
+}
+
+int labelCount = -1;
+
+int getLabel(){
+    return ++labelCount;
 }
 
 void print(FILE *fp,int reg1){
   int reg2 = getReg();
-  for (int i=0;i<reg2;i++)
+  for (int i=1;i<reg2;i++)
     fprintf(fp, "PUSH R%d\n", i);
   fprintf(fp, "MOV R%d,\"Write\"\n", reg2);
   fprintf(fp, "PUSH R%d\n", reg2);
@@ -138,14 +145,14 @@ void print(FILE *fp,int reg1){
   fprintf(fp, "POP R%d\n", reg2);
   fprintf(fp, "POP R%d\n", reg2);
   fprintf(fp, "POP R%d\n", reg2);
-  for (int i=reg2-1;i>=0;i--)
+  for (int i=reg2-1;i>0;i--)
     fprintf(fp, "POP R%d\n", i);
   freeReg();
 }
 
 void reading(FILE *fp,int addrs){
     int reg2 = getReg();
-    for (int i=0;i<reg2;i++)
+    for (int i=1;i<reg2;i++)
       fprintf(fp, "PUSH R%d\n", i);
     fprintf(fp, "MOV R%d,\"Read\"\n", reg2);
     fprintf(fp, "PUSH R%d\n", reg2);
@@ -164,7 +171,7 @@ void reading(FILE *fp,int addrs){
     fprintf(fp, "POP R%d\n", reg2);
     fprintf(fp, "POP R%d\n", reg2);
     fprintf(fp, "POP R%d\n", reg2);
-    for (int i=reg2-1;i>=0;i--)
+    for (int i=reg2-1;i>0;i--)
       fprintf(fp, "POP R%d\n", i);
     freeReg();
 }
@@ -180,6 +187,42 @@ int codeGen(struct astnode* root,FILE *fp){
           fprintf(fp, "MOV R%d, %d\n", reg,addrs);
       }
       return reg;
+  }
+  else if(root->nodetype == _WHILE){
+      int label1 = getLabel();
+      int label2 = getLabel();
+      fprintf(fp, "L%d:\n", label1);
+
+      int l = codeGen(root->left,fp);
+      fprintf(fp, "JZ R%d, L%d\n", l,label2);
+
+      int r = codeGen(root->right,fp);
+
+      fprintf(fp, "JMP L%d\n", label1);
+      fprintf(fp, "L%d:\n", label2);
+
+      freeReg();
+      return l;
+  }
+  else if(root->nodetype == _IF){
+      int label1 = getLabel();
+      int label2 = getLabel();
+      // fprintf(fp, "L%d:\n", label1);
+
+      int l = codeGen(root->left,fp);
+      fprintf(fp, "JZ R%d, L%d\n", l,label1);
+
+      int r = codeGen(root->right->left,fp);
+      fprintf(fp, "JMP L%d\n", label2);
+      fprintf(fp, "L%d:\n", label1);
+
+      if(root->right->right != NULL){
+          r = codeGen(root->right->right,fp);
+          freeReg();
+      }
+      fprintf(fp, "L%d:\n", label2);
+      freeReg();
+      return l;
   }
   else{
     int l = codeGen(root->left,fp);
@@ -235,13 +278,69 @@ int codeGen(struct astnode* root,FILE *fp){
                     reading(fp,l);
                     break;
         case _WRITE :
-                    if(root->left->nodetype == _INT && root->left->nodetype == 1){
+                    if(root->left->nodetype == _INT && root->left->type == 1){
                         fprintf(fp, "MOV R%d, [R%d]\n", l,l);
                     }
                     print(fp,l);
                     break;
+        case _LT    :
+                    if(root->left->nodetype == _INT && root->left->type == 1){
+                        fprintf(fp, "MOV R%d,[R%d]\n", l,l);
+                    }
+                    if(root->right->nodetype == _INT && root->right->type == 1){
+                        fprintf(fp, "MOV R%d,[R%d]\n", r,r);
+                    }
+                    fprintf(fp, "LT R%d, R%d\n", l,r);
+                    break;
+        case _GT    :
+                    if(root->left->nodetype == _INT && root->left->type == 1){
+                        fprintf(fp, "MOV R%d,[R%d]\n", l,l);
+                    }
+                    if(root->right->nodetype == _INT && root->right->type == 1){
+                        fprintf(fp, "MOV R%d,[R%d]\n", r,r);
+                    }
+                    fprintf(fp, "GT R%d, R%d\n", l,r);
+                    break;
+        case _GE    :
+                    if(root->left->nodetype == _INT && root->left->type == 1){
+                        fprintf(fp, "MOV R%d,[R%d]\n", l,l);
+                    }
+                    if(root->right->nodetype == _INT && root->right->type == 1){
+                        fprintf(fp, "MOV R%d,[R%d]\n", r,r);
+                    }
+                    fprintf(fp, "GE R%d, R%d\n", l,r);
+                    break;
+        case _LE    :
+                    if(root->left->nodetype == _INT && root->left->type == 1){
+                        fprintf(fp, "MOV R%d,[R%d]\n", l,l);
+                    }
+                    if(root->right->nodetype == _INT && root->right->type == 1){
+                        fprintf(fp, "MOV R%d,[R%d]\n", r,r);
+                    }
+                    fprintf(fp, "LE R%d, R%d\n", l,r);
+                    break;
+        case _NE    :
+                    if(root->left->nodetype == _INT && root->left->type == 1){
+                        fprintf(fp, "MOV R%d,[R%d]\n", l,l);
+                    }
+                    if(root->right->nodetype == _INT && root->right->type == 1){
+                        fprintf(fp, "MOV R%d,[R%d]\n", r,r);
+                    }
+                    fprintf(fp, "NE R%d, R%d\n", l,r);
+                    break;
+        case _EQ    :
+                    if(root->left->nodetype == _INT && root->left->type == 1){
+                        fprintf(fp, "MOV R%d,[R%d]\n", l,l);
+                    }
+                    if(root->right->nodetype == _INT && root->right->type == 1){
+                        fprintf(fp, "MOV R%d,[R%d]\n", r,r);
+                    }
+                    fprintf(fp, "EQ R%d, R%d\n", l,r);
+                    break;
+
     }
     if(root->nodetype != _CNT) freeReg();
+    // freeReg();
     return l;
   }
 
@@ -263,4 +362,14 @@ void genxsm(struct astnode *root){
 
   fprintf(fp ,"INT 10");
   fclose(fp);
+}
+
+void preorder(struct astnode *root){
+    if(root != NULL){
+        printf("(");
+        printf("%d ", root->nodetype);
+        preorder(root->left);
+        preorder(root->right);
+        printf(")");
+    }
 }
