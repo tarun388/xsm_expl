@@ -1,0 +1,9 @@
+decl
+int num, sum;
+str mesg;
+enddecl
+begin
+while (mesg <= mesg) do
+num =1;
+endwhile;
+end;
