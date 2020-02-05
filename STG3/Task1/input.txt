@@ -1,8 +1,14 @@
 begin
-		read(n);
-		while( n >= 1 ) do
-			read(m);
-			write(res);
-			n = n-1;
+	i=0;
+	while(i<10) do
+		i = i+1;
+		j = i;
+		while(j<10) do
+		j = j+1;
+			if(i > j) then
+				break;
+			endif;
+			write(i);
 		endwhile;
-end
+	endwhile;
+end;

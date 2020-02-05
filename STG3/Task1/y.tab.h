@@ -68,7 +68,9 @@ extern int yydebug;
     EQ = 278,
     WHILE = 279,
     DO = 280,
-    ENDWHILE = 281
+    ENDWHILE = 281,
+    BREAK = 282,
+    CONTINUE = 283
   };
 #endif
 /* Tokens.  */
@@ -96,6 +98,8 @@ extern int yydebug;
 #define WHILE 279
 #define DO 280
 #define ENDWHILE 281
+#define BREAK 282
+#define CONTINUE 283
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
@@ -106,7 +110,7 @@ union YYSTYPE
 
   struct astnode *node;
 
-#line 110 "y.tab.h" /* yacc.c:1909  */
+#line 114 "y.tab.h" /* yacc.c:1909  */
 };
 
 typedef union YYSTYPE YYSTYPE;

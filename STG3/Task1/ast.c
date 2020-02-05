@@ -16,6 +16,8 @@
 #define _IF 15
 #define _BOOL 16
 #define _WHILE 17
+#define _BREAK 18
+#define _CONTINUE 19
 
 /*
 Leaf nodes are of two types
@@ -110,6 +112,22 @@ struct astnode* makeLoopNode(struct astnode* cond, struct astnode* while_body){
     return temp;
 }
 
+struct astnode* makeBreakNode(){
+    struct astnode* temp = (struct astnode*)malloc(sizeof(struct astnode));
+    temp->varname = NULL;
+    temp->nodetype = _BREAK;
+    temp->left = temp->right = NULL;
+    return temp;
+}
+
+struct astnode* makeContinueNode(){
+    struct astnode* temp = (struct astnode*)malloc(sizeof(struct astnode));
+    temp->varname = NULL;
+    temp->nodetype = _CONTINUE;
+    temp->left = temp->right = NULL;
+    return temp;
+}
+
 //global variable denoting free register count number
 int regCount = 0;
 
@@ -127,6 +145,11 @@ int labelCount = -1;
 int getLabel(){
     return ++labelCount;
 }
+
+//nested while count
+int nested_while=-1;
+
+int label_jmp[1000][2];
 
 void print(FILE *fp,int reg1){
   int reg2 = getReg();
@@ -191,6 +214,11 @@ int codeGen(struct astnode* root,FILE *fp){
   else if(root->nodetype == _WHILE){
       int label1 = getLabel();
       int label2 = getLabel();
+
+      nested_while++;
+      label_jmp[nested_while][0] = label1;
+      label_jmp[nested_while][1] = label2;
+
       fprintf(fp, "L%d:\n", label1);
 
       int l = codeGen(root->left,fp);
@@ -200,6 +228,8 @@ int codeGen(struct astnode* root,FILE *fp){
 
       fprintf(fp, "JMP L%d\n", label1);
       fprintf(fp, "L%d:\n", label2);
+
+      nested_while--;
 
       freeReg();
       return l;
@@ -223,6 +253,18 @@ int codeGen(struct astnode* root,FILE *fp){
       fprintf(fp, "L%d:\n", label2);
       freeReg();
       return l;
+  }
+  else if(root->nodetype == _BREAK){
+      if(nested_while>=0){
+        fprintf(fp, "JMP L%d\n", label_jmp[nested_while][1]);
+      }
+      return -1;
+  }
+  else if(root->nodetype == _CONTINUE){
+      if(nested_while>=0){
+        fprintf(fp, "JMP L%d\n", label_jmp[nested_while][0]);
+      }
+      return -1;
   }
   else{
     int l = codeGen(root->left,fp);
@@ -365,11 +407,11 @@ void genxsm(struct astnode *root){
 }
 
 void preorder(struct astnode *root){
+    printf("(");
     if(root != NULL){
-        printf("(");
         printf("%d ", root->nodetype);
         preorder(root->left);
         preorder(root->right);
-        printf(")");
     }
+    printf(")");
 }

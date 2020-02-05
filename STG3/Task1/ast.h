@@ -22,6 +22,10 @@ struct astnode* makeCondNode(struct astnode* cond, struct astnode* true_stmt, st
 
 struct astnode* makeLoopNode(struct astnode* cond, struct astnode* while_body);
 
+struct astnode* makeBreakNode();
+
+struct astnode* makeContinueNode();
+
 int getReg();
 
 void freeReg();

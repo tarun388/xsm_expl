@@ -38,6 +38,8 @@
 "<="    {return LE;}
 "!="    {return NE;}
 "=="    {return EQ;}
+"break" {return BREAK;}
+"continue"  {return CONTINUE;}
 .       {yyerror("unknown character\n"); exit(1);}
 
 %%

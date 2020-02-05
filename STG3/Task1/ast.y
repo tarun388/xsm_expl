@@ -14,8 +14,8 @@
   struct astnode *node;
 };
 
-%type <node> program Slist Stmt InputStmt OutputStmt AsgStmt ID E READ WRITE NUM Ifstmt Whilestmt
-%token _BEGIN END READ WRITE PLUS MINUS MUL DIV NUM ID NEWLINE IF THEN ELSE ENDIF GT LT GE LE NE EQ WHILE DO ENDWHILE
+%type <node> program Slist Stmt InputStmt OutputStmt AsgStmt ID E READ WRITE NUM Ifstmt Whilestmt BrkStmt ContStmt BREAK CONTINUE
+%token _BEGIN END READ WRITE PLUS MINUS MUL DIV NUM ID NEWLINE IF THEN ELSE ENDIF GT LT GE LE NE EQ WHILE DO ENDWHILE BREAK CONTINUE
 %left GT LT GE LE NE EQ
 %left PLUS MINUS
 %left MUL DIV
@@ -42,6 +42,8 @@ Stmt        :   InputStmt                       {$$ = $1;}
             |   AsgStmt                         {$$ = $1;}
             |   Ifstmt                          {$$ = $1;}
             |   Whilestmt                       {$$ = $1;}
+            |   BrkStmt                         {$$ = $1;}
+            |   ContStmt                        {$$ = $1;}
             ;
 
 Whilestmt   :   WHILE '(' E ')' DO Slist ENDWHILE ';'                           {   if($3->type != _BOOL){
@@ -78,6 +80,12 @@ AsgStmt     :   ID  '='  E ';'                  {   if($3->type == _BOOL){
                                                     }
                                                     else {$$ = makeAsgtNode($1,$3);}
                                                 }
+            ;
+
+BrkStmt     :   BREAK ';'                       {$$ = makeBreakNode();}
+            ;
+
+ContStmt    :   CONTINUE ';'                    {$$ = makeContinueNode();}
             ;
 
 E           :   E PLUS E                        {   if(($1->type == _BOOL) || ($3->type == _BOOL)){
