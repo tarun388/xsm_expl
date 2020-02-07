@@ -105,8 +105,13 @@ struct astnode* makeArrayLeafNode(struct astnode* id,struct astnode* index){
         yyerror("Undeclared Variable\n");
         exit(1);
     }
-    if(Gentry->class != _ARRAY){
-        yyerror("Type not array\n");
+    // if(Gentry->class != _ARRAY){
+    //     yyerror("Type not array\n");
+    //     exit(1);
+    // }
+    // checkTypeMismatch(index);
+    if(index->type != _INT){
+        yyerror("Type error\n");
         exit(1);
     }
     struct astnode* temp = (struct astnode*)malloc(sizeof(struct astnode));
@@ -283,6 +288,20 @@ void reading(FILE *fp,int arg2){
 int findaddress(char* node){
     struct Gsymbol *temp = Lookup(node);
     return temp->binding;
+}
+
+void checkTypeMismatchVar(struct astnode* root, int var_type){
+    // if(root == NULL) printf("hi\n");
+    struct Gsymbol* Gentry = Lookup(root->varname);
+    // if(Gentry == NULL){
+    //     yyerror("Undeclared Variable\n");
+    //     exit(1);
+    // }
+    if(Gentry->class != var_type){
+        yyerror("Type error\n");
+        exit(1);
+    }
+    // printf("hi%d%s",var_type,root->varname);
 }
 
 void checkTypeMismatch(struct astnode* root){

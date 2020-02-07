@@ -134,8 +134,8 @@ E           :   E PLUS E                        {$$ = makeOperatorNode(_INT,_PLU
             |   Identifier                           {$$ = $1;}
             ;
 
-Identifier  :  ID '[' E ']'                    {$$ = makeArrayLeafNode($1,$3);}
-            |  ID                              {$$ = $1;}
+Identifier  :  ID '[' E ']'                    {checkTypeMismatchVar($1,_ARRAY); $$ = makeArrayLeafNode($1,$3);}
+            |  ID                              {checkTypeMismatchVar($1,_VAR); $$ = $1;}
             ;
 
 

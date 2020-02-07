@@ -90,6 +90,10 @@ void reading(FILE *fp,int addrs);
 
 int findaddress(char* node);
 
+void checkTypeMismatchVar(struct astnode* root,int var_type);
+
+void checkTypeMismatch(struct astnode* root);
+
 int codeGen(struct astnode* root,FILE *fp);
 
 void genxsm(struct astnode *root);

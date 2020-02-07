@@ -1641,13 +1641,13 @@ yyreduce:
 
   case 47:
 #line 137 "ast.y" /* yacc.c:1646  */
-    {(yyval.node) = makeArrayLeafNode((yyvsp[-3].node),(yyvsp[-1].node));}
+    {checkTypeMismatchVar((yyvsp[-3].node),_ARRAY); (yyval.node) = makeArrayLeafNode((yyvsp[-3].node),(yyvsp[-1].node));}
 #line 1646 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 48:
 #line 138 "ast.y" /* yacc.c:1646  */
-    {(yyval.node) = (yyvsp[0].node);}
+    {checkTypeMismatchVar((yyvsp[0].node),_VAR); (yyval.node) = (yyvsp[0].node);}
 #line 1652 "y.tab.c" /* yacc.c:1646  */
     break;
 
