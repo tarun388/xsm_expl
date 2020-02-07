@@ -53,30 +53,31 @@ extern int yydebug;
     MINUS = 263,
     MUL = 264,
     DIV = 265,
-    NUM = 266,
-    ID = 267,
-    NEWLINE = 268,
-    IF = 269,
-    THEN = 270,
-    ELSE = 271,
-    ENDIF = 272,
-    GT = 273,
-    LT = 274,
-    GE = 275,
-    LE = 276,
-    NE = 277,
-    EQ = 278,
-    WHILE = 279,
-    DO = 280,
-    ENDWHILE = 281,
-    BREAK = 282,
-    CONTINUE = 283,
-    DECL = 284,
-    ENDDECL = 285,
-    INT = 286,
-    STR = 287,
-    IDD = 288,
-    STRING = 289
+    MOD = 266,
+    NUM = 267,
+    ID = 268,
+    NEWLINE = 269,
+    IF = 270,
+    THEN = 271,
+    ELSE = 272,
+    ENDIF = 273,
+    GT = 274,
+    LT = 275,
+    GE = 276,
+    LE = 277,
+    NE = 278,
+    EQ = 279,
+    WHILE = 280,
+    DO = 281,
+    ENDWHILE = 282,
+    BREAK = 283,
+    CONTINUE = 284,
+    DECL = 285,
+    ENDDECL = 286,
+    INT = 287,
+    STR = 288,
+    IDD = 289,
+    STRING = 290
   };
 #endif
 /* Tokens.  */
@@ -88,42 +89,43 @@ extern int yydebug;
 #define MINUS 263
 #define MUL 264
 #define DIV 265
-#define NUM 266
-#define ID 267
-#define NEWLINE 268
-#define IF 269
-#define THEN 270
-#define ELSE 271
-#define ENDIF 272
-#define GT 273
-#define LT 274
-#define GE 275
-#define LE 276
-#define NE 277
-#define EQ 278
-#define WHILE 279
-#define DO 280
-#define ENDWHILE 281
-#define BREAK 282
-#define CONTINUE 283
-#define DECL 284
-#define ENDDECL 285
-#define INT 286
-#define STR 287
-#define IDD 288
-#define STRING 289
+#define MOD 266
+#define NUM 267
+#define ID 268
+#define NEWLINE 269
+#define IF 270
+#define THEN 271
+#define ELSE 272
+#define ENDIF 273
+#define GT 274
+#define LT 275
+#define GE 276
+#define LE 277
+#define NE 278
+#define EQ 279
+#define WHILE 280
+#define DO 281
+#define ENDWHILE 282
+#define BREAK 283
+#define CONTINUE 284
+#define DECL 285
+#define ENDDECL 286
+#define INT 287
+#define STR 288
+#define IDD 289
+#define STRING 290
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 
 union YYSTYPE
 {
-#line 12 "ast.y" /* yacc.c:1909  */
+#line 13 "ast.y" /* yacc.c:1909  */
 
   struct astnode *node;
-  struct Gsymbol *node2;
+  /* struct Gsymbol *node2; */
 
-#line 127 "y.tab.h" /* yacc.c:1909  */
+#line 129 "y.tab.h" /* yacc.c:1909  */
 };
 
 typedef union YYSTYPE YYSTYPE;

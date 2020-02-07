@@ -13,16 +13,17 @@ Bool
 
 struct Gsymbol * GsymbolHead = NULL;
 struct Gsymbol * GsymbolTail = NULL;
-int symbolentry = -1;
+int addrs = 4095;
 
-struct Gsymbol *makeSymbolNode(char *name, int type, int size){
+struct Gsymbol *makeSymbolNode(char *name, int type, int size,int class){
     struct Gsymbol* temp = (struct Gsymbol*)malloc(sizeof(struct Gsymbol));
 
     temp->name = strdup(name);
     temp->type = type;
+    temp->class = class;
     temp->size = size;
-    symbolentry++;
-    temp->binding = 4096 + symbolentry;
+    temp->binding = addrs+1;
+    addrs += size;
     temp->next = NULL;
     return temp;
 }
@@ -39,10 +40,10 @@ struct Gsymbol *Lookup(char* name){
     return NULL;
 }
 
-void Install(char *name, int type, int size){
+void Install(char *name, int type, int size,int class){
 // Creates a symbol table entry.
     if(Lookup(name) == NULL){
-        struct Gsymbol* temp = makeSymbolNode(name,type,size);
+        struct Gsymbol* temp = makeSymbolNode(name,type,size,class);
         if(GsymbolHead == NULL){
             GsymbolHead = GsymbolTail = temp;
         }
@@ -76,17 +77,44 @@ struct astnode* makeConstStringLeafNode(char *c){
     return temp;
 }
 
-struct astnode* makeVarLeafNode(char *c){
+struct astnode* makeVarLeafNode(char *c,int var_type,int section){
     struct Gsymbol* Gentry = Lookup(c);
+    if(section == 2){
+        if(Gentry == NULL){
+            yyerror("Undeclared Variable\n");
+            exit(1);
+        }
+        // if(Gentry->class != _VAR){
+        //     yyerror("Type not normal var\n");
+        //     exit(1);
+        // }
+    }
+
+    struct astnode* temp = (struct astnode*)malloc(sizeof(struct astnode));
+    temp->varname = strdup(c);
+    if(section == 1) temp->type = var_type;
+    else temp->type = Gentry->type;
+    temp->nodetype = _VAR;
+    temp->left = temp->right = NULL;
+    return temp;
+}
+
+struct astnode* makeArrayLeafNode(struct astnode* id,struct astnode* index){
+    struct Gsymbol* Gentry = Lookup(id->varname);
     if(Gentry == NULL){
         yyerror("Undeclared Variable\n");
         exit(1);
     }
+    if(Gentry->class != _ARRAY){
+        yyerror("Type not array\n");
+        exit(1);
+    }
     struct astnode* temp = (struct astnode*)malloc(sizeof(struct astnode));
-    temp->varname = Gentry->name;
-    temp->type = Gentry->type;
-    temp->nodetype = _VAR;
-    temp->left = temp->right = NULL;
+    temp->varname = NULL;
+    temp->type = id->type;
+    temp->nodetype = _ARRAY;
+    temp->left = id;
+    temp->right = index;
     return temp;
 }
 
@@ -226,7 +254,7 @@ void print(FILE *fp,int reg1){
   freeReg();
 }
 
-void reading(FILE *fp,int addrs){
+void reading(FILE *fp,int arg2){
     int reg2 = getReg();
     for (int i=1;i<reg2;i++)
       fprintf(fp, "PUSH R%d\n", i);
@@ -234,10 +262,10 @@ void reading(FILE *fp,int addrs){
     fprintf(fp, "PUSH R%d\n", reg2);
     fprintf(fp, "MOV R%d,-1\n", reg2);
     fprintf(fp, "PUSH R%d\n", reg2);
-    int x = getReg();
-    fprintf(fp, "MOV R%d, %d\n", x,addrs);
-    freeReg();
-    fprintf(fp, "PUSH R%d\n", x);
+    // int x = getReg();
+    // fprintf(fp, "MOV R%d, %d\n", x,addrs);
+    // freeReg();
+    fprintf(fp, "PUSH R%d\n", arg2);
     fprintf(fp, "PUSH R%d\n", reg2);
     fprintf(fp, "PUSH R%d\n", reg2);
     fprintf(fp, "CALL 0\n");
@@ -252,12 +280,13 @@ void reading(FILE *fp,int addrs){
     freeReg();
 }
 
-int findaddress(char *name){
-    struct Gsymbol *temp = Lookup(name);
+int findaddress(char* node){
+    struct Gsymbol *temp = Lookup(node);
     return temp->binding;
 }
 
 void checkTypeMismatch(struct astnode* root){
+    // return 1;
     if(root->nodetype == _ASGT){
         if(!((root->left->type == _INT && root->right->type == _INT) || (root->left->type == _STRING && root->right->type == _STRING))){
             yyerror("Type Mismatch\n");
@@ -273,7 +302,7 @@ void checkTypeMismatch(struct astnode* root){
 }
 
 int codeGen(struct astnode* root,FILE *fp){
-  if(root->nodetype == _CONST || root->nodetype == _VAR){
+  if(root->nodetype == _CONST || root->nodetype == _VAR || root->nodetype == _ARRAY){
       int reg = getReg();
       if(root->nodetype == _CONST){
           if(root->type == _INT){
@@ -283,12 +312,26 @@ int codeGen(struct astnode* root,FILE *fp){
               fprintf(fp, "MOV R%d, %s\n", reg,root->str);
           }
       }
+      else if(root->nodetype == _ARRAY){
+          int index = codeGen(root->right,fp);
+          if(root->right->nodetype == _VAR){
+              fprintf(fp, "MOV R%d,[R%d]\n", index,index);
+          }
+          struct Gsymbol* Gentry = Lookup(root->left->varname);
+          // printf("hi\n");
+
+          int baseaddrs = Gentry->binding;
+          fprintf(fp, "MOV R%d, %d\n", reg,baseaddrs);
+          fprintf(fp, "ADD R%d, R%d\n", reg,index);
+          freeReg();
+      }
       else{
           int addrs = findaddress(root->varname);
           fprintf(fp, "MOV R%d, %d\n", reg,addrs);
       }
       return reg;
   }
+
   else if(root->nodetype == _WHILE){
       int label1 = getLabel();
       int label2 = getLabel();
@@ -352,107 +395,116 @@ int codeGen(struct astnode* root,FILE *fp){
     }
     switch (root->nodetype){
         case _PLUS  :
-                    if(root->right->nodetype == _VAR){
+                    if(root->right->nodetype == _VAR || root->right->nodetype == _ARRAY){
                         fprintf(fp, "MOV R%d, [R%d]\n", r,r);
                     }
-                    if(root->left->nodetype == _VAR){
+                    if(root->left->nodetype == _VAR || root->left->nodetype == _ARRAY){
                         fprintf(fp, "MOV R%d, [R%d]\n", l,l);
                     }
                     fprintf(fp, "ADD R%d, R%d\n", l,r);
                     break;
         case _MINUS :
-                    if(root->right->nodetype == _VAR){
+                    if(root->right->nodetype == _VAR || root->right->nodetype == _ARRAY){
                         fprintf(fp, "MOV R%d, [R%d]\n", r,r);
                     }
-                    if(root->left->nodetype == _VAR){
+                    if(root->left->nodetype == _VAR || root->left->nodetype == _ARRAY){
                         fprintf(fp, "MOV R%d, [R%d]\n", l,l);
                     }
                     fprintf(fp, "SUB R%d, R%d\n", l,r);
                     break;
         case _MUL   :
-                    if(root->right->nodetype == _VAR){
+                    if(root->right->nodetype == _VAR || root->right->nodetype == _ARRAY){
                         fprintf(fp, "MOV R%d, [R%d]\n", r,r);
                     }
-                    if(root->left->nodetype == _VAR){
+                    if(root->left->nodetype == _VAR || root->left->nodetype == _ARRAY){
                         fprintf(fp, "MOV R%d, [R%d]\n", l,l);
                     }
                     fprintf(fp, "MUL R%d, R%d\n", l,r);
                     break;
         case _DIV   :
-                    if(root->right->nodetype == _VAR){
+                    if(root->right->nodetype == _VAR || root->right->nodetype == _ARRAY){
                         fprintf(fp, "MOV R%d, [R%d]\n", r,r);
                     }
-                    if(root->left->nodetype == _VAR){
+                    if(root->left->nodetype == _VAR  || root->left->nodetype == _ARRAY){
                         fprintf(fp, "MOV R%d, [R%d]\n", l,l);
                     }
                     fprintf(fp, "DIV R%d, R%d\n", l,r);
                     break;
+        case _MOD   :
+                    if(root->right->nodetype == _VAR || root->right->nodetype == _ARRAY){
+                        fprintf(fp, "MOV R%d, [R%d]\n", r,r);
+                    }
+                    if(root->left->nodetype == _VAR  || root->left->nodetype == _ARRAY){
+                        fprintf(fp, "MOV R%d, [R%d]\n", l,l);
+                    }
+                    fprintf(fp, "MOD R%d, R%d\n", l,r);
+                    break;
         case _ASGT  :
-                    if(root->right->nodetype == _VAR){
+                    if(root->right->nodetype == _VAR || root->right->nodetype == _ARRAY){
                         fprintf(fp, "MOV R%d, [R%d]\n", r,r);
                     }
                     fprintf(fp, "MOV [R%d], R%d\n", l,r);
                     break;
         case _READ  :
-                    l = findaddress(root->left->varname);
+                    // l = findaddress(root->left);
                     reading(fp,l);
                     break;
         case _WRITE :
-                    if(root->left->nodetype == _VAR){
+                    if(root->left->nodetype == _VAR || root->left->nodetype == _ARRAY){
                         fprintf(fp, "MOV R%d, [R%d]\n", l,l);
                     }
                     print(fp,l);
                     break;
         case _LT    :
-                    if(root->left->nodetype == _VAR){
+                    if(root->left->nodetype == _VAR || root->left->nodetype == _ARRAY){
                         fprintf(fp, "MOV R%d,[R%d]\n", l,l);
                     }
-                    if(root->right->nodetype == _VAR){
+                    if(root->right->nodetype == _VAR || root->right->nodetype == _ARRAY){
                         fprintf(fp, "MOV R%d,[R%d]\n", r,r);
                     }
                     fprintf(fp, "LT R%d, R%d\n", l,r);
                     break;
         case _GT    :
-                    if(root->left->nodetype == _VAR){
+                    if(root->left->nodetype == _VAR || root->left->nodetype == _ARRAY){
                         fprintf(fp, "MOV R%d,[R%d]\n", l,l);
                     }
-                    if(root->right->nodetype == _VAR){
+                    if(root->right->nodetype == _VAR || root->right->nodetype == _ARRAY){
                         fprintf(fp, "MOV R%d,[R%d]\n", r,r);
                     }
                     fprintf(fp, "GT R%d, R%d\n", l,r);
                     break;
         case _GE    :
-                    if(root->left->nodetype == _VAR){
+                    if(root->left->nodetype == _VAR || root->left->nodetype == _ARRAY){
                         fprintf(fp, "MOV R%d,[R%d]\n", l,l);
                     }
-                    if(root->right->nodetype == _VAR){
+                    if(root->right->nodetype == _VAR || root->right->nodetype == _ARRAY){
                         fprintf(fp, "MOV R%d,[R%d]\n", r,r);
                     }
                     fprintf(fp, "GE R%d, R%d\n", l,r);
                     break;
         case _LE    :
-                    if(root->left->nodetype == _VAR){
+                    if(root->left->nodetype == _VAR || root->left->nodetype == _ARRAY){
                         fprintf(fp, "MOV R%d,[R%d]\n", l,l);
                     }
-                    if(root->right->nodetype == _VAR){
+                    if(root->right->nodetype == _VAR || root->right->nodetype == _ARRAY){
                         fprintf(fp, "MOV R%d,[R%d]\n", r,r);
                     }
                     fprintf(fp, "LE R%d, R%d\n", l,r);
                     break;
         case _NE    :
-                    if(root->left->nodetype == _VAR){
+                    if(root->left->nodetype == _VAR || root->left->nodetype == _ARRAY){
                         fprintf(fp, "MOV R%d,[R%d]\n", l,l);
                     }
-                    if(root->right->nodetype == _VAR){
+                    if(root->right->nodetype == _VAR || root->right->nodetype == _ARRAY){
                         fprintf(fp, "MOV R%d,[R%d]\n", r,r);
                     }
                     fprintf(fp, "NE R%d, R%d\n", l,r);
                     break;
         case _EQ    :
-                    if(root->left->nodetype == _VAR){
+                    if(root->left->nodetype == _VAR || root->left->nodetype == _ARRAY){
                         fprintf(fp, "MOV R%d,[R%d]\n", l,l);
                     }
-                    if(root->right->nodetype == _VAR){
+                    if(root->right->nodetype == _VAR || root->right->nodetype == _ARRAY){
                         fprintf(fp, "MOV R%d,[R%d]\n", r,r);
                     }
                     fprintf(fp, "EQ R%d, R%d\n", l,r);
@@ -475,7 +527,7 @@ void genxsm(struct astnode *root){
   //entry point
   fprintf(fp, "2056\n");
   for(int i=0;i<6;i++) fprintf(fp, "0\n");
-  fprintf(fp, "MOV SP, %d\n",4096+symbolentry);
+  fprintf(fp, "MOV SP, %d\n",addrs);
   int reg = codeGen(root,fp);
 
   //print(fp,reg);
@@ -487,7 +539,7 @@ void genxsm(struct astnode *root){
 void preorder(struct astnode *root){
     printf("(");
     if(root != NULL){
-        printf("%d ", root->nodetype);
+        printf("%d,%d ", root->nodetype,root->type);
         preorder(root->left);
         preorder(root->right);
     }

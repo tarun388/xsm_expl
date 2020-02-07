@@ -22,10 +22,13 @@
 #define _CONST 21
 #define _VAR 22
 #define _IFBODY 23
+#define _ARRAY 24
+#define _MOD 25
 
 typedef struct Gsymbol{
     char* name;                 // name of the variable
     int type;                   // type of the variable
+    int class;                  // class i.e. array or not
     int size;                   // size of the type of the variable
     int binding;                // stores the static memory address allocated to the variable
     struct Gsymbol *next;
@@ -43,17 +46,19 @@ typedef struct astnode{
 
 void checkTypeMismatch(struct astnode* root);
 
-struct Gsymbol *makeSymbolNode(char *name, int type, int size);
+struct Gsymbol *makeSymbolNode(char *name, int type, int size,int class);
 
 struct Gsymbol *Lookup(char* name);
 
-void Install(char *name, int type, int size);
+void Install(char *name, int type, int size, int class);
 
 struct astnode* makeConstIntLeafNode(int val);
 
 struct astnode* makeConstStringLeafNode(char *c);
 
-struct astnode* makeVarLeafNode(char *c);
+struct astnode* makeVarLeafNode(char *c,int var_type,int section);
+
+struct astnode* makeArrayLeafNode(struct astnode* id,struct astnode* index);
 
 struct astnode* makeOperatorNode(int typ, int nodetype, struct astnode* l, struct astnode* r);
 
@@ -83,7 +88,7 @@ void print(FILE *fp,int reg1);
 
 void reading(FILE *fp,int addrs);
 
-int findaddress(char *name);
+int findaddress(char* node);
 
 int codeGen(struct astnode* root,FILE *fp);
 
