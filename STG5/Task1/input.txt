@@ -1,0 +1,24 @@
+decl
+    int a();
+    int c[10];
+enddecl
+int a(){
+    decl
+    int b;
+    enddecl
+    begin
+    b=1;
+    c[0]=b;
+    write(1);
+    return 1;
+    end
+}
+int main(){
+    decl
+    enddecl
+    begin
+    c[0] = a();
+    write(1);
+    return (1*5);
+    end
+}
