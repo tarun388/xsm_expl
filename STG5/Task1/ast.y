@@ -12,7 +12,7 @@
 };
 
 %type <node2> Param ParamList
-%type <node> program GDeclBlock GDeclList GDecl Type INT STR GidList Gid FDefBlock Fdef MainBlock MAIN LdeclBlock LDecList LDecl IdList Body Retstmt Slist Stmt Whilestmt Ifstmt InputStmt READ OutputStmt WRITE AsgStmt BrkStmt ContStmt E NUM STRING ID Identifier
+%type <node> program GDeclBlock GDeclList GDecl Type INT STR GidList Gid FDefBlock Fdef MainBlock MAIN LdeclBlock LDecList LDecl IdList Body Retstmt Slist Stmt Whilestmt Ifstmt InputStmt READ OutputStmt WRITE AsgStmt BrkStmt ContStmt E NUM STRING ID Identifier ArgList
 %token _BEGIN END READ WRITE PLUS MINUS MUL DIV MOD NUM ID NEWLINE IF THEN ELSE ENDIF GT LT GE LE NE EQ WHILE DO ENDWHILE BREAK CONTINUE DECL ENDDECL INT STR IDD STRING MAIN RETURN
 %left GT LT GE LE NE EQ
 %left PLUS MINUS
@@ -22,74 +22,68 @@
 
 %%
 
-program     :   GDeclBlock FDefBlock MainBlock                                  {
-                                                                                    print_Gsymbol_table();
-                                                                                    printf("PARSED\n");
-                                                                                    //genxsm($3);
-                                                                                    preorder($2);
-                                                                                    printf("\n");
-                                                                                    preorder($3);
-                                                                                    printf("\n");
-                                                                                }
-            |   GDeclBlock MainBlock                                            {printf("PARSED\n"); $$ = NULL; print_Gsymbol_table(); preorder($2);}
-            |   MainBlock                                                       {printf("PARSED\n"); $$ = NULL; print_Gsymbol_table(); preorder($1);}
+program     :   GDeclBlock FDefBlock MainBlock                                  {printf("PARSED\n");}
+            |   GDeclBlock MainBlock                                            {printf("PARSED\n");}
+            |   MainBlock                                                       {printf("PARSED\n");}
             ;
 
-GDeclBlock  :   DECL GDeclList ENDDECL                                          {$$ = $2;}
-            |   DECL ENDDECL                                                    {$$ = NULL;}
+GDeclBlock  :   DECL GDeclList ENDDECL                                          {print_Gsymbol_table();global_declaration_code();}
+            |   DECL ENDDECL                                                    {global_declaration_code();}
             ;
 
 GDeclList   :   GDeclList GDecl
             |   GDecl
             ;
 
-GDecl       :   Type GidList ';'
+GDecl       :   Type GidList ';'                                                {TypeStackPop();}
             ;
 
-Type        :   INT
-            |   STR
+Type        :   INT                                                             {TYPE = TypeStackPush(_INT);}
+            |   STR                                                             {TYPE = TypeStackPush(_STRING);}
             ;
 
 GidList     :   GidList ',' Gid
             |   Gid
             ;
 
-Gid         :   ID '[' NUM ']'                                                  {GInstall($1->varname,$1->type,$3->val,_ARRAY,NULL);}
-            |   ID                                                              {GInstall($1->varname,$1->type,1,_VAR,NULL);}
-            |   ID '(' ParamList ')'                                            {GInstall($1->varname,$1->type,-1,_FUNCTION,$3);}
+Gid         :   ID '[' NUM ']'                                                  {GInstall($1->varname,TYPE,$3->val,_ARRAY,NULL);}
+            |   ID                                                              {GInstall($1->varname,TYPE,1,_VAR,NULL);}
+            |   ID '(' ParamList ')'                                            {GInstall($1->varname,TYPE,-1,_FUNCTION,$3);ParamHead=NULL;}
             ;
 
 FDefBlock   :   FDefBlock Fdef
             |   Fdef
             ;
 
-Fdef        :   Type ID '(' ParamList ')' '{' LdeclBlock Body '}'               {Function($2,$4,$8);/*codeGen($8)*/;LsymbolHead=NULL;LsymbolTail=NULL;}
+Fdef        :   Type ID '(' ParamList ')' '{' LdeclBlock Body '}'               {p();Function($2,$4,$8);preorder($8);printf("\n");gen_function_code($2,$8);LsymbolHead=NULL;LsymbolTail=NULL;ParamHead=NULL;}
             ;
 
-ParamList   :   ParamList ',' Param                                             {$$ = makeParamList($1,$3);}
-            |   Param                                                           {$$ = $1;}
-            |                                                                   {$$ = NULL;}
+
+ParamList   :   ParamList ',' Param                                             {$$ = makeParamList($1,$3);ParamHead=$$;}
+            |   Param                                                           {$$ = $1;ParamHead=$$;}
+            |                                                                   {$$ = NULL;ParamHead=$$;}
             ;
 
-Param       :   Type ID                                                         {$$ = makeArgs($2->varname,$1->type);}
+Param       :   Type ID                                                         {$$ = makeParameter($2->varname,TYPE);TypeStackPop();}
             ;
 
-MainBlock   :   INT MAIN '(' ')' '{' LdeclBlock Body '}'                        {Function($2,NULL,$7);/*codeGen($7)*/;LsymbolHead=NULL;LsymbolTail=NULL;}
+MainBlock   :   INT MAIN '(' ')' '{' LdeclBlock Body '}'                        {p();Function($2,NULL,$7);preorder($7);printf("\n");gen_function_code($2,$7);LsymbolHead=NULL;LsymbolTail=NULL;ParamHead=NULL;}
             ;
 
-LdeclBlock  :   DECL LDecList ENDDECL                                           {$$ = $2;}
-            |   DECL ENDDECL                                                    {$$ = NULL;}
+LdeclBlock  :   DECL LDecList ENDDECL                                           {$$ = $2;p(); InstallParameter();p();}
+            |   DECL ENDDECL                                                    {$$ = NULL;p();InstallParameter();p();}
+            |                                                                   {$$ = NULL;p();InstallParameter();p();}
             ;
 
 LDecList    :   LDecList LDecl
             |   LDecl
             ;
 
-LDecl       :   Type IdList ';'
+LDecl       :   Type IdList ';'                                                 {TypeStackPop();}
             ;
 
-IdList      :   IdList ',' ID
-            |   ID                                                              {LInstall($1->varname,$1->type);}
+IdList      :   IdList ',' ID                                                   {LInstall($3->varname,TYPE);}
+            |   ID                                                              {LInstall($1->varname,TYPE);}
             ;
 
 Body        :   _BEGIN Slist Retstmt END                                        {$$ = makeconnectorNode($2,$3);}
@@ -115,7 +109,7 @@ Whilestmt   :   WHILE '(' E ')' DO Slist ENDWHILE ';'                           
                                                                                     yyerror("type mismatch");
                                                                                     exit(1);
                                                                                     }
-                                                                                    else $$ = makeLoopNode($3,$6);
+                                                                                    $$ = makeLoopNode($3,$6);
                                                                                 }
             ;
 
@@ -123,13 +117,13 @@ Ifstmt      :   IF '(' E ')' THEN Slist ELSE Slist ENDIF ';'                    
                                                                                     yyerror("type mismatch");
                                                                                     exit(1);
                                                                                     }
-                                                                                    else $$ = makeCondNode($3,$6,$8);
+                                                                                    $$ = makeCondNode($3,$6,$8);
                                                                                 }
             |   IF '(' E ')' THEN Slist ENDIF ';'                               {   if($3->type != _BOOL){
                                                                                         yyerror("type mismatch");
                                                                                         exit(1);
                                                                                     }
-                                                                                    else $$ = makeCondNode($3,$6,NULL);
+                                                                                    $$ = makeCondNode($3,$6,NULL);
                                                                                 }
             ;
 
@@ -154,28 +148,9 @@ BrkStmt     :   BREAK ';'                                                       
 ContStmt    :   CONTINUE ';'                                                    {$$ = makeContinueNode();}
             ;
 
-/* Declarations    :   DECL DecList ENDDECL        {print_Gsymbol_table();}
-                |   DECL ENDDECL                {$$ = NULL;}
+ArgList         :   ArgList ',' E                                               {$$ = makeArgList($1,$3);}
+                |   E                                                           {$$ = makeArgList(NULL,$1);}
                 ;
-
-DecList         :   DecList Decl
-                |   Decl
-                ;
-
-Decl            :   Type Varlist ';'
-                ;
-
-Type            :   INT                         {}
-                |   STR                         {}
-                ;
-
-Varlist         :   Varlist ',' IdList
-                |   IdList
-                ;
-
-IdList          :   ID '[' NUM ']'
-                |   ID
-                ; */
 
 E           :   E PLUS E                                                        {$$ = makeOperatorNode(_INT,_PLUS,$1,$3);}
             |   E MINUS E                                                       {$$ = makeOperatorNode(_INT,_MINUS,$1,$3);}
@@ -192,10 +167,12 @@ E           :   E PLUS E                                                        
             |   NUM                                                             {$$ = $1;}
             |   STRING                                                          {$$ = $1;}
             |   Identifier                                                      {$$ = $1;}
+            |   ID '(' ')'                                                      {$$ = makeFunctionNode($1,NULL);}
+            |   ID '(' ArgList ')'                                              {$$ = makeFunctionNode($1,$3);}
             ;
 
-Identifier  :  ID '[' E ']'                                                     {checkTypeMismatchVar($1,_ARRAY); $$ = makeArrayLeafNode($1,$3);}
-            |  ID                                                               {checkTypeMismatchVar($1,_VAR); $$ = $1;}
+Identifier  :  ID '[' E ']'                                                     {$$ = makeArrayLeafNode($1,$3);}
+            |  ID                                                               {$$ = updateVarLeafNode($1);}
             ;
 
 
@@ -207,18 +184,21 @@ void yyerror(const char *s){
 
 int main(int argc, char *argv[]){
     if (argc > 1){
-        FILE *fp = fopen(argv[1], "r");
+        fp = fopen(argv[1], "r");
         if(fp) yyin = fp;
     }
-    FILE *fp;
+    //FILE *fp;
+    /* printf("cdddd"); */
     fp = fopen("xsm1.xsm","w");
     //Header of xsm FILE
     //XEXE file format
     fprintf(fp, "0\n");
     //entry point
-    fprintf(fp, "main\n");
+    fprintf(fp, "2056\n");
     for(int i=0;i<6;i++) fprintf(fp, "0\n");
-    fprintf(fp, "MOV SP, %d\n",addrs);
+    //fprintf(fp, "MOV SP, %d\n",addrs);
+
+    TopTypeStack = -1;
 
     yyparse();
 

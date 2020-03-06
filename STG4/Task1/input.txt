@@ -3,5 +3,6 @@ decl
     str s;
 enddecl
 begin
-    d[d[0]]=1;
+    read(a);
+    write(a);
 end;

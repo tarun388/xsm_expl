@@ -16,18 +16,25 @@
 
 %%
 
-[0-9]+      {number = atoi(yytext); yylval.node = makeConstIntLeafNode(number);return NUM;}
+[0-9]+      {number = atoi(yytext);
+            yylval.node = makeConstIntLeafNode(number);
+            return NUM;}
 "+"         {return PLUS;}
 "-"         {return MINUS;}
 "*"         {return MUL;}
 "/"         {return DIV;}
 "%"         {return MOD;}
 [ |\t|\n]   {}
-"("         {param_on = 1; return *yytext;}
-")"         {param_on = 0; return *yytext;}
-"main"      {GInstall(yytext,_INT,-1,_FUNCTION,NULL); yylval.node = makeVarLeafNode(yytext,_INT,2,param_on); return MAIN;}
+"("         {param_on = 1;
+            return *yytext;}
+")"         {param_on = 0;
+            return *yytext;}
+"main"      {GInstall(yytext,_INT,-1,_FUNCTION,NULL);
+            yylval.node = makeVarLeafNode(yytext);
+            yylval.node->type = _INT;
+            return MAIN;}
 "return"    {return RETURN;}
-"begin"     {section = 2; return _BEGIN;}
+"begin"     {return _BEGIN;}
 "end"       {return END;}
 "read"      {return READ;}
 "write"     {return WRITE;}
@@ -53,13 +60,17 @@
 "=="        {return EQ;}
 "break"     {return BREAK;}
 "continue"  {return CONTINUE;}
-"decl"      {section = 1; return DECL;}
+"decl"      {return DECL;}
 "enddecl"   {return ENDDECL;}
-"int"       {param_type = _INT; if(param_on==0) var_type = _INT; return INT;}
-"str"       {param_type = _STRING; if(param_on==0) var_type = _STRING; return STR;}
-[\"](.)*[\"]            {yylval.node = makeConstStringLeafNode(yytext); return STRING;}
-[a-z][a-z0-9]*          {if(param_on==0) yylval.node = makeVarLeafNode(yytext,var_type,section,param_on); else yylval.node = makeVarLeafNode(yytext,param_type,section,param_on); return ID;}
-.                       {printf("%c",*yytext);yyerror("unknown character\n"); exit(1);}
+"int"       {return INT;}
+"str"       {return STR;}
+[\"](.)*[\"]            {yylval.node = makeConstStringLeafNode(yytext);
+                        return STRING;}
+[A-Za-z][A-Za-z0-9]*          {yylval.node = makeVarLeafNode(yytext);
+                        return ID;}
+.                       {printf("%c",*yytext);
+                        yyerror("unknown character\n");
+                        exit(1);}
 
 %%
 

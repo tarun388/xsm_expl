@@ -1,6 +1,71 @@
-begin
- read (a);
- read (b);
- d = a + 2 * b;
- write (a+d);
-end;
+decl
+    int a[50];
+enddecl
+
+int main(){
+    decl
+    int i;
+    enddecl
+    begin
+        i=0;
+        a[i] = i;
+        write(a[i]);
+        return 1;
+    end
+}
+
+decl
+    int a[50];
+enddecl
+
+int main(){
+    decl
+    int i;
+    enddecl
+    begin
+        i=0;
+        while(i < 10)do
+            a[i] = i;
+            i = i+1;
+        endwhile;
+        i=0;
+        while(i < 10)do
+            write(a[i]);
+            i=i+1;
+        endwhile;
+        return 1;
+    end
+}
+
+decl
+    int n,fibo(int n);
+enddecl
+
+int fibo(int n){
+    decl
+        int res;
+    enddecl
+    begin
+        if(n==0)then
+            res=0;
+        else
+            if(n==1)then
+                res=1;
+            else
+                res=fibo(n-1)+fibo(n-2);
+            endif;
+        endif;
+        return res;
+    end
+}
+int main(){
+    decl
+        int result;
+    enddecl
+    begin
+        read(n);
+        result = fibo(n);
+        write(result);
+        return 0;
+    end
+}

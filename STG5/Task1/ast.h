@@ -33,6 +33,11 @@ void yyerror(const char *s);
 #define _MOD 25
 #define _FUNCTION 26
 
+FILE *fp;
+
+int TYPE;
+struct Paramstruct *ParamHead;
+
 typedef struct Paramstruct{
     char* name;                 // name of argument
     int type;                   // data type
@@ -49,7 +54,7 @@ typedef struct Lsymbol{
 typedef struct Gsymbol{
     char* name;                     // name of the variable
     int type;                       // type of the variable
-    int class;                      // class i.e. array or not
+    int class;                      // class i.e. array or var or function
     int size;                       // size of the type of the variable
     int binding;                    // stores the static memory address allocated to the variable
     struct Paramstruct *paramlist;  //pointer to the head of the formal parameter list
@@ -63,12 +68,16 @@ typedef struct astnode{
   char* str;
   int type;                         //type of variables
   char* varname;                    //name of variables for ID nodes
-  int nodetype;                     //information about non-leaf nodes -read/write/connector/+/* etc
+  int nodetype;                     //information about non-leaf nodes -read/write/connector/+/*/function etc
   struct Gsymbol *Gentry;           //pointer to GST entry for global variables and functions
   struct Paramstruct *paramlist;    //list of parameters for function
   struct Lsymbol *Lentry;
+  struct astnode *arglist;
   struct astnode *left, *right;
 }astnode;
+
+int TypeStack[100];
+int TopTypeStack;
 
 struct Paramstruct *makeArgs(char *name,int type);
 
@@ -82,11 +91,13 @@ struct Gsymbol *GLookup(char* name);
 
 void GInstall(char *name, int type, int size, int class,struct Paramstruct *paramlist);
 
+struct astnode *makeNewastnode();
+
 struct astnode* makeConstIntLeafNode(int val);
 
 struct astnode* makeConstStringLeafNode(char *c);
 
-struct astnode* makeVarLeafNode(char *c,int var_type,int section,int param_on);
+struct astnode* makeVarLeafNode(char *c);
 
 struct astnode* makeArrayLeafNode(struct astnode* id,struct astnode* index);
 
@@ -109,6 +120,8 @@ struct astnode* makeBreakNode();
 struct astnode* makeContinueNode();
 
 void Function(struct astnode *head,struct Paramstruct *paramlist,struct astnode *body);
+
+struct astnode * makeFunctionNode(struct astnode *name, struct astnode *arglist);
 
 int getReg();
 
