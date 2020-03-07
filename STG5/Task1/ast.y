@@ -24,11 +24,11 @@
 
 program     :   GDeclBlock FDefBlock MainBlock                                  {printf("PARSED\n");}
             |   GDeclBlock MainBlock                                            {printf("PARSED\n");}
-            |   MainBlock                                                       {printf("PARSED\n");}
             ;
 
 GDeclBlock  :   DECL GDeclList ENDDECL                                          {print_Gsymbol_table();global_declaration_code();}
             |   DECL ENDDECL                                                    {global_declaration_code();}
+            |                                                                   {global_declaration_code();}
             ;
 
 GDeclList   :   GDeclList GDecl
