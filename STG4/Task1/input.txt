@@ -1,8 +1,19 @@
 decl
-    int a,d[100];
-    str s;
+    int a,d[100],i;
 enddecl
 begin
+    i = 0;
+    while(i<10)
+    do
+        read(d[i]);
+        i = i + 1;
+    endwhile;
+    i = 0;
+    while(i < 10)
+    do
+        write(d[i]);
+        i = i + 1;
+    endwhile;
     read(a);
     write(a);
 end;

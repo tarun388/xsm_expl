@@ -241,6 +241,10 @@ struct astnode* makeReadNode(struct astnode* l){
 }
 
 struct astnode* makeWriteNode(struct astnode* l){
+    if(l->type == _BOOL){
+        yyerror("Syntax error. Cannot boolean.\n");
+        exit(1);
+    }
     struct astnode* temp = makeNewastnode();
     temp->nodetype = _WRITE;
     temp->left = l;

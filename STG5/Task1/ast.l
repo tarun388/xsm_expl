@@ -64,7 +64,7 @@
 "enddecl"   {return ENDDECL;}
 "int"       {return INT;}
 "str"       {return STR;}
-[\"](.)*[\"]            {yylval.node = makeConstStringLeafNode(yytext);
+[\"][A-Za-z0-9]*[\"]            {yylval.node = makeConstStringLeafNode(yytext);
                         return STRING;}
 [A-Za-z][A-Za-z0-9]*          {yylval.node = makeVarLeafNode(yytext);
                         return ID;}
