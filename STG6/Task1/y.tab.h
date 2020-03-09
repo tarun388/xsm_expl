@@ -79,7 +79,13 @@ extern int yydebug;
     IDD = 289,
     STRING = 290,
     MAIN = 291,
-    RETURN = 292
+    RETURN = 292,
+    _TYPE = 293,
+    ENDTYPE = 294,
+    ALLOC = 295,
+    FREE = 296,
+    INITIALIZE = 297,
+    __NULL = 298
   };
 #endif
 /* Tokens.  */
@@ -118,6 +124,12 @@ extern int yydebug;
 #define STRING 290
 #define MAIN 291
 #define RETURN 292
+#define _TYPE 293
+#define ENDTYPE 294
+#define ALLOC 295
+#define FREE 296
+#define INITIALIZE 297
+#define __NULL 298
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
@@ -128,8 +140,10 @@ union YYSTYPE
 
   struct astnode *node;
   struct Paramstruct *node2;
+  struct Fieldlist *node3;
+  struct Typetable *node4;
 
-#line 133 "y.tab.h" /* yacc.c:1909  */
+#line 147 "y.tab.h" /* yacc.c:1909  */
 };
 
 typedef union YYSTYPE YYSTYPE;

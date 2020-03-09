@@ -32,28 +32,44 @@ void yyerror(const char *s);
 #define _ARRAY 24
 #define _MOD 25
 #define _FUNCTION 26
+#define _FIELD 27
+#define _DOT 28
+#define _ALLOC 29
+#define _FREE 30
+#define _INITIALIZE 31
+#define _NULL 32
 
-FILE *fp;
+typedef struct Fieldlist{
+    char * name;
+    int fieldindex;
+    struct Typetable * type;
+    char * typeinfo;
+    struct Fieldlist * next;
+}Fieldlist;
 
-int TYPE;
-struct Paramstruct *ParamHead;
+typedef struct Typetable{
+    char * name;
+    int size;
+    struct Fieldlist * fields;
+    struct Typetable  * next;
+}Typetable;
 
 typedef struct Paramstruct{
     char* name;                 // name of argument
-    int type;                   // data type
+    Typetable * type;                   // data type
     struct Paramstruct* next;
 }Paramstruct;
 
 typedef struct Lsymbol{
     char *name;                     //name of the variable
-    int type;                       //type of the variable:(Integer / String)
+    Typetable * type;                       //type of the variable:(Integer / String)
     int binding;                    //local binding of the variable
     struct Lsymbol *next;           //points to the next Local Symbol Table entry
 }Lsymbol;
 
 typedef struct Gsymbol{
     char* name;                     // name of the variable
-    int type;                       // type of the variable
+    Typetable * type;                       // type of the variable
     int class;                      // class i.e. array or var or function
     int size;                       // size of the type of the variable
     int binding;                    // stores the static memory address allocated to the variable
@@ -66,7 +82,7 @@ typedef struct Gsymbol{
 typedef struct astnode{
   int val;                          //value for NUM
   char* str;
-  int type;                         //type of variables
+  Typetable * type;                         //type of variables
   char* varname;                    //name of variables for ID nodes
   int nodetype;                     //information about non-leaf nodes -read/write/connector/+/*/function etc
   struct Gsymbol *Gentry;           //pointer to GST entry for global variables and functions
@@ -76,20 +92,70 @@ typedef struct astnode{
   struct astnode *left, *right;
 }astnode;
 
-int TypeStack[100];
+FILE *fp;
+
+struct Paramstruct *ParamHead;
+
+int typeflag;       //for type declaration
+char * typeinfo;      //for type declaration
+struct Typetable * TYPE;
+struct Typetable * TypeStack[100];
 int TopTypeStack;
 
-struct Paramstruct *makeArgs(char *name,int type);
+Typetable * TypetableHead;
+Typetable * TypetableTail;
+struct Gsymbol * GsymbolHead;
+struct Gsymbol * GsymbolTail;
+struct Lsymbol * LsymbolHead;
+struct Lsymbol * LsymbolTail;
 
-struct Paramstruct *makeParamList(struct Paramstruct *head,struct Paramstruct *newParam);
+int global_var_addrs_limit;
+int flabel;
 
-void checkTypeMismatch(struct astnode* root);
+//global variable denoting free register count number
+int regCount;
+int labelCount;
 
-struct Gsymbol *makeGSymbolNode(char *name, int type, int size,int class,struct Paramstruct *paramlist);
+//nested while count
+int nested_while;
+
+int label_jmp[1000][2];
+
+astnode * GNULL;
+
+Typetable * TypeStackPush(Typetable * type);
+
+void TypeStackPop();
+
+Fieldlist * makeNewFieldlistNode();
+
+Fieldlist * makeFieldlistNode(char * name,Typetable * type,char * typeinfo);
+
+Fieldlist * makeFieldlist(Fieldlist * fieldlist,Fieldlist * field);
+
+Fieldlist * FLookup(Typetable * type,char * name);
+
+Typetable * makeNewTypeTableNode();
+
+Typetable * TLookup(char * name);
+
+Typetable * TInstall(char *name,int size,Fieldlist * fields);
+
+void TypeTableCreate();
+
+struct Lsymbol *makeNewLsymbol();
+
+struct Lsymbol *makeLsymbolNode(char *name,Typetable * type);
+
+struct Lsymbol *LLookup(char *name);
+
+struct Lsymbol * LInstall(char *name,Typetable * type);
+
+struct Gsymbol *makeGSymbolNode(char *name, Typetable * type, int size,int class,struct Paramstruct *paramlist);
 
 struct Gsymbol *GLookup(char* name);
 
-void GInstall(char *name, int type, int size, int class,struct Paramstruct *paramlist);
+void GInstall(char *name, Typetable * type, int size, int class,struct Paramstruct *paramlist);
 
 struct astnode *makeNewastnode();
 
@@ -99,9 +165,13 @@ struct astnode* makeConstStringLeafNode(char *c);
 
 struct astnode* makeVarLeafNode(char *c);
 
+struct astnode* updateVarLeafNode(struct astnode* id);
+
 struct astnode* makeArrayLeafNode(struct astnode* id,struct astnode* index);
 
-struct astnode* makeOperatorNode(int typ, int nodetype, struct astnode* l, struct astnode* r);
+astnode * makeDotNode(astnode * l,astnode * r);
+
+struct astnode* makeOperatorNode(Typetable * type, int nodetype, struct astnode* l, struct astnode* r);
 
 struct astnode* makeAsgtNode(struct astnode* l, struct astnode* r);
 
@@ -119,9 +189,19 @@ struct astnode* makeBreakNode();
 
 struct astnode* makeContinueNode();
 
+struct Paramstruct *makeParameter(char *name,Typetable * type);
+
+struct Paramstruct *makeParamList(struct Paramstruct *head,struct Paramstruct *newParam);
+
+void InstallParameter();
+
 void Function(struct astnode *head,struct Paramstruct *paramlist,struct astnode *body);
 
+struct astnode * makeArgList(struct astnode * head,struct astnode *arg);
+
 struct astnode * makeFunctionNode(struct astnode *name, struct astnode *arglist);
+
+void checkTypeMismatch(struct astnode* root);
 
 int getReg();
 
@@ -133,16 +213,18 @@ void print(FILE *fp,int reg1);
 
 void reading(FILE *fp,int addrs);
 
-int findaddress(char* node);
-
 void checkTypeMismatchVar(struct astnode* root,int var_type);
 
-void checkTypeMismatch(struct astnode* root);
+int evaluate_argument(FILE *fp,struct astnode *arg);
 
 int codeGen(struct astnode* root,FILE *fp);
 
-void genxsm();
+void gen_function_code(struct astnode *fhead,astnode *root);
+
+void global_declaration_code();
 
 void preorder(struct astnode *root);
 
 void print_Gsymbol_table();
+
+void p();

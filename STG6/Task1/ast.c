@@ -1,43 +1,137 @@
 
-/*
-Leaf nodes are of two types
-constant
-variables
-*/
-
-/*
-Three data types
-Integer
-String
-Bool
-*/
-
-struct Gsymbol * GsymbolHead = NULL;
-struct Gsymbol * GsymbolTail = NULL;
-struct Lsymbol * LsymbolHead = NULL;
-struct Lsymbol * LsymbolTail = NULL;
-
-int global_var_addrs_limit = 4095;
-int flabel=-1;
-
-int TypeStackPush(int type){
+Typetable * TypeStackPush(Typetable * type){
+    // printf("push\n");
     TypeStack[++TopTypeStack] = type;
     return type;
 }
 
 void TypeStackPop(){
+    // printf("pop\n");
     --TopTypeStack;
     if(TopTypeStack > -1) TYPE = TypeStack[TopTypeStack];
+}
+
+Fieldlist * makeNewFieldlistNode(){
+    Fieldlist * temp = (Fieldlist *)malloc(sizeof(struct Fieldlist));
+    temp->name = NULL;
+    temp->type = NULL;
+    temp->typeinfo = NULL;
+    temp->next = NULL;
+    return temp;
+}
+
+Fieldlist * makeFieldlistNode(char * name,Typetable * type,char * typeinfo){
+    Fieldlist * temp = makeNewFieldlistNode();
+    temp->name = strdup(name);
+    temp->type = type;
+    if(type == NULL) temp->typeinfo = typeinfo;
+    return temp;
+}
+
+Fieldlist * makeFieldlist(Fieldlist * fieldlist,Fieldlist * field){
+    Fieldlist * temp = fieldlist;
+    if(temp == NULL){
+        return field;
+    }
+    else{
+        while(temp->next != NULL){
+            temp = temp->next;
+        }
+        temp->next = field;
+    }
+    return fieldlist;
+}
+
+Fieldlist * FLookup(Typetable * type,char * name){
+    Fieldlist * temp = type->fields;
+    while(temp != NULL){
+        if(strcmp(temp->name,name) == 0) return temp;
+        temp = temp->next;
+    }
+    return NULL;
+}
+
+Typetable * makeNewTypeTableNode(){
+    Typetable * temp = (Typetable *)malloc(sizeof(struct Typetable));
+    temp->name = NULL;
+    temp->fields = NULL;
+    temp->next = NULL;
+    return temp;
+}
+
+Typetable * TLookup(char * name){
+    Typetable * temp = TypetableHead;
+    while(temp != NULL){
+        if(strcmp(temp->name,name)==0) return temp;
+        temp = temp->next;
+    }
+    return NULL;
+}
+
+Typetable * TInstall(char *name,int size,Fieldlist * fields){
+    Typetable * temp = TLookup(name);
+    if(temp == NULL){
+        temp = makeNewTypeTableNode();
+        temp->name = strdup(name);
+        temp->size = size;
+        temp->fields = fields;
+        if(TypetableHead == NULL){
+            TypetableHead = TypetableTail = temp;
+        }
+        else{
+            TypetableTail->next = temp;
+            TypetableTail = temp;
+        }
+        int fieldindex=1;
+        Fieldlist * temp1 = fields;
+        Fieldlist * temp2;
+        while(temp1 != NULL){
+            //checking for redeclaration
+            temp2 = fields;
+            while(temp2 != temp1){
+                if(strcmp(temp2->name,temp1->name)==0){
+                    yyerror("Multiple declaration of fields.\n");
+                    exit(1);
+                }
+                temp2 = temp2->next;
+            }
+            if(temp1->type == NULL){
+                if(strcmp(temp1->typeinfo,name)==0){
+                    temp1->type = temp;
+                }
+                else{
+                    yyerror("Undefined type\n");
+                    exit(1);
+                }
+            }
+            temp1->fieldindex = fieldindex;
+            fieldindex++;
+            temp1 = temp1->next;
+        }
+    }
+    else{
+        yyerror("Multiple Declaration\n");
+        exit(1);
+    }
+    return temp;
+}
+
+void TypeTableCreate(){
+    Typetable * temp = TInstall("int",1,NULL);
+    temp = TInstall("str",1,NULL);
+    temp = TInstall("bool",1,NULL);
+    temp = TInstall("void",0,NULL);
 }
 
 struct Lsymbol *makeNewLsymbol(){
     struct Lsymbol * temp = (struct Lsymbol*)malloc(sizeof(struct Lsymbol));
     temp->name = NULL;
+    temp->type = NULL;
     temp->next = NULL;
     return temp;
 }
 
-struct Lsymbol *makeLsymbolNode(char *name,int type){
+struct Lsymbol *makeLsymbolNode(char *name,Typetable * type){
     struct Lsymbol *temp = makeNewLsymbol();
     temp->name = strdup(name);
     temp->type = type;
@@ -54,7 +148,7 @@ struct Lsymbol *LLookup(char *name){
     return NULL;
 }
 
-struct Lsymbol * LInstall(char *name,int type){
+struct Lsymbol * LInstall(char *name,Typetable * type){
     if(LLookup(name) == NULL){
         struct Lsymbol* temp = makeLsymbolNode(name,type);
         if(LsymbolHead == NULL){
@@ -71,7 +165,7 @@ struct Lsymbol * LInstall(char *name,int type){
     }
 }
 
-struct Gsymbol *makeGSymbolNode(char *name, int type, int size,int class,struct Paramstruct *paramlist){
+struct Gsymbol *makeGSymbolNode(char *name, Typetable * type, int size,int class,struct Paramstruct *paramlist){
     struct Gsymbol* temp = (struct Gsymbol*)malloc(sizeof(struct Gsymbol));
     temp->name = strdup(name);
     temp->type = type;
@@ -98,7 +192,7 @@ struct Gsymbol *GLookup(char* name){
     return NULL;
 }
 
-void GInstall(char *name, int type, int size,int class,struct Paramstruct *paramlist){
+void GInstall(char *name, Typetable * type, int size,int class,struct Paramstruct *paramlist){
 // Creates a symbol table entry.
     if(GLookup(name) == NULL){
         struct Gsymbol* temp = makeGSymbolNode(name,type,size,class,paramlist);
@@ -119,9 +213,11 @@ void GInstall(char *name, int type, int size,int class,struct Paramstruct *param
 struct astnode *makeNewastnode(){
     struct astnode *temp = (struct astnode *)malloc(sizeof(struct astnode));
     temp->str = NULL;
+    temp->type = TLookup("void");
     temp->varname = NULL;
     temp->Gentry = NULL;
     temp->paramlist = NULL;
+    temp->arglist = NULL;
     temp->Lentry = NULL;
     temp->left = temp->right = NULL;
     return temp;
@@ -130,7 +226,7 @@ struct astnode *makeNewastnode(){
 struct astnode* makeConstIntLeafNode(int val){
     struct astnode* temp = makeNewastnode();
     temp->val = val;
-    temp->type = _INT;
+    temp->type = TLookup("int");
     temp->nodetype = _CONST;
     return temp;
 }
@@ -138,7 +234,7 @@ struct astnode* makeConstIntLeafNode(int val){
 struct astnode* makeConstStringLeafNode(char *c){
     struct astnode* temp = makeNewastnode();
     temp->str = strdup(c);
-    temp->type = _STRING;
+    temp->type = TLookup("str");
     temp->nodetype = _CONST;
     return temp;
 }
@@ -146,7 +242,7 @@ struct astnode* makeConstStringLeafNode(char *c){
 struct astnode* makeVarLeafNode(char *c){
     struct astnode* temp = makeNewastnode();
     temp->varname = strdup(c);
-    temp->type = TYPE;
+    temp->type = TLookup("void");
     temp->nodetype = _VAR;
     return temp;
 }
@@ -191,7 +287,7 @@ struct astnode* makeArrayLeafNode(struct astnode* id,struct astnode* index){
     }
     //index type can only be Integer
     //but it can be any expression
-    if(index->type != _INT){
+    if(index->type != TLookup("int")){
         yyerror("Type error\n");
         exit(1);
     }
@@ -208,10 +304,30 @@ struct astnode* makeArrayLeafNode(struct astnode* id,struct astnode* index){
     return temp;
 }
 
-struct astnode* makeOperatorNode(int type, int nodetype, struct astnode* l, struct astnode* r){
+astnode * makeDotNode(astnode * l,astnode * r){
+    if(l->nodetype != _DOT){
+        l = updateVarLeafNode(l);
+    }
+    //check right part of dot node
+    Fieldlist * temp1 = FLookup(l->type,r->varname);
+    if(temp1 == NULL){
+        yyerror("Undeclared field type\n");
+        exit(1);
+    }
+    r->type = temp1->type;
+    r->nodetype = _FIELD;
+
+    astnode * temp = makeNewastnode();
+    temp->nodetype = _DOT;
+    temp->type = r->type;
+    temp->left = l;
+    temp->right = r;
+    return temp;
+}
+
+struct astnode* makeOperatorNode(Typetable * type, int nodetype, struct astnode* l, struct astnode* r){
     struct astnode* temp = makeNewastnode();
     temp->type = type;
-    temp->varname = NULL;
     temp->nodetype = nodetype;
     temp->left = l;
     temp->right = r;
@@ -219,9 +335,69 @@ struct astnode* makeOperatorNode(int type, int nodetype, struct astnode* l, stru
     return temp;
 }
 
+astnode * makeAllocNode(astnode * l){
+    if(l->nodetype != _VAR && l->nodetype != _DOT){
+        yyerror("Alloc cannot be to array\n");
+        exit(1);
+    }
+    if(l->type == TLookup("int") || l->type == TLookup("str")){
+        yyerror("Alloc can't be used with primitive datatype\n");
+        exit(1);
+    }
+    astnode * temp = makeNewastnode();
+    temp->nodetype = _ALLOC;
+    temp->left = l;
+    return temp;
+}
+
+astnode * makeFreeNode(astnode * l, astnode * r){
+    if(l->type != TLookup("int")){
+        yyerror("Free return var should be int\n");
+        exit(1);
+    }
+    if(r->nodetype != _VAR && r->nodetype != _DOT){
+        yyerror("Free cannot be to array\n");
+        exit(1);
+    }
+    if(r->type == TLookup("int") || r->type == TLookup("str")){
+        yyerror("Free can't be used with primitive datatype\n");
+        exit(1);
+    }
+    astnode * temp = makeNewastnode();
+    temp->nodetype = _FREE;
+    temp->left = l;
+    temp->right = r;
+    return temp;
+}
+
+astnode * makeInitializeNode(astnode * l){
+    if(l->type != TLookup("int")){
+        yyerror("Initialize return var should be int\n");
+        exit(1);
+    }
+    astnode * temp = makeNewastnode();
+    temp->nodetype = _INITIALIZE;
+    temp->left = l;
+    return temp;
+}
+
+astnode * makeNullNode(){
+    astnode * temp = makeNewastnode();
+    temp->nodetype = _NULL;
+    return temp;
+}
+
 struct astnode* makeAsgtNode(struct astnode* l, struct astnode* r){
+    if(l->nodetype != _VAR && l->nodetype != _ARRAY && l->nodetype != _DOT){
+        yyerror("LHS should be memory location\n");
+        exit(1);
+    }
+    if(r->type == TLookup("bool")){
+        yyerror("can't assign bool\n");
+        exit(1);
+    }
     struct astnode* temp = makeNewastnode();
-    temp->type = _INT;
+    temp->type = l->type;
     temp->nodetype = _ASGT;
     temp->left = l;
     temp->right = r;
@@ -230,10 +406,6 @@ struct astnode* makeAsgtNode(struct astnode* l, struct astnode* r){
 }
 
 struct astnode* makeReadNode(struct astnode* l){
-    if(l->nodetype != _VAR && l->nodetype != _ARRAY){
-        yyerror("Syntax error. Can only read to memory.\n");
-        exit(1);
-    }
     struct astnode* temp = makeNewastnode();
     temp->nodetype = _READ;
     temp->left = l;
@@ -241,8 +413,8 @@ struct astnode* makeReadNode(struct astnode* l){
 }
 
 struct astnode* makeWriteNode(struct astnode* l){
-    if(l->type == _BOOL){
-        yyerror("Syntax error. Cannot boolean.\n");
+    if(l->type == TLookup("bool")){
+        yyerror("cannot write bool\n");
         exit(1);
     }
     struct astnode* temp = makeNewastnode();
@@ -260,6 +432,10 @@ struct astnode* makeconnectorNode(struct astnode* l, struct astnode* r){
 }
 
 struct astnode* makeCondNode(struct astnode* cond, struct astnode* true_stmt, struct astnode* false_stmt){
+    if(cond->type != TLookup("bool")){
+        yyerror("Type Mismatch(cond)\n");
+        exit(1);
+    }
     struct astnode * temp = makeNewastnode();
     temp->nodetype = _IF;
     temp->left = cond;
@@ -275,6 +451,10 @@ struct astnode* makeCondNode(struct astnode* cond, struct astnode* true_stmt, st
 }
 
 struct astnode* makeLoopNode(struct astnode* cond, struct astnode* while_body){
+    if(cond->type != TLookup("bool")){
+        yyerror("Type Mismatch(loop)\n");
+        exit(1);
+    }
     struct astnode * temp = makeNewastnode();
     temp->nodetype = _WHILE;
     temp->left = cond;
@@ -294,7 +474,7 @@ struct astnode* makeContinueNode(){
     return temp;
 }
 
-struct Paramstruct *makeParameter(char *name,int type){
+struct Paramstruct *makeParameter(char *name,Typetable * type){
     struct Paramstruct *temp = (struct Paramstruct*)malloc(sizeof(struct Paramstruct));
     temp->name = strdup(name);
     temp->type = type;
@@ -304,7 +484,7 @@ struct Paramstruct *makeParameter(char *name,int type){
 
 struct Paramstruct *makeParamList(struct Paramstruct *head,struct Paramstruct *newParam){
     struct Paramstruct *temp = head;
-    while(temp->next != NULL){
+    while(temp->next != NULL){printf("qwer\n");
         temp = temp->next;
     }
     temp->next = newParam;
@@ -317,7 +497,7 @@ void InstallParameter(){
     struct Lsymbol *temp2;
     int i=-3;
     while(temp != NULL){
-        printf("%s\n", temp->name);
+        // printf("%s\n", temp->name);
         temp2 = LInstall(temp->name,temp->type);
         temp2->binding = i--;
         temp = temp->next;
@@ -325,12 +505,14 @@ void InstallParameter(){
 }
 
 void Function(struct astnode *head,struct Paramstruct *paramlist,struct astnode *body){
+    if(strcmp(head->varname,"main") != 0) head->type = TYPE;
     struct Gsymbol *Gentry = GLookup(head->varname);
     if(Gentry == NULL){
         yyerror("Undeclared Function\n");
         exit(1);
     }
     if(Gentry->type != head->type){
+        // printf("%s %s\n",head->varname,head->type->name);
         yyerror("Function def does not match declaration\n");
         exit(1);
     }
@@ -361,8 +543,8 @@ void Function(struct astnode *head,struct Paramstruct *paramlist,struct astnode 
         exit(1);
     }
 
-    head->type = Gentry->type;
     head->nodetype = _FUNCTION;
+    head->Gentry = Gentry;
     Gentry->Lsymbollist = LsymbolHead;
 }
 
@@ -417,22 +599,49 @@ struct astnode * makeFunctionNode(struct astnode *name, struct astnode *arglist)
 
 void checkTypeMismatch(struct astnode* root){
     if(root->nodetype == _ASGT){
-        if(!((root->left->type == _INT && root->right->type == _INT) || (root->left->type == _STRING && root->right->type == _STRING))){
-            printf("%s %d\n", root->left->varname,root->left->type);
-            yyerror("iType Mismatch\n");
+        if(root->right->nodetype == _NULL){
+            if(root->left->type == TLookup("int") || root->left->type == TLookup("str")){
+                yyerror("NULL can only be assigned to user-define\n");
+                exit(1);
+            }
+        }
+        else if(root->left->type != root->right->type){
+            yyerror("1Type Mismatch\n");
+            exit(1);
+        }
+    }
+    else if(root->nodetype == _PLUS || root->nodetype == _MINUS || root->nodetype == _MUL || root->nodetype == _DIV || root->nodetype == _MOD){
+        //only integer arithmetic allowed
+        if(!(root->left->type == TLookup("int") && root->right->type == TLookup("int"))){
+            yyerror("2Type Mismatch\n");
+            exit(1);
+        }
+    }
+    else if(root->nodetype == _EQ || root->nodetype == _NE){
+        if(root->left->nodetype == _NULL){
+            if(root->right->type == TLookup("int") || root->right->type == TLookup("str")){
+                yyerror("NULL can only be compared with user-defined\n");
+                exit(1);
+            }
+        }
+        else if(root->right->nodetype == _NULL){
+            if(root->left->type == TLookup("int") || root->left->type == TLookup("str")){
+                yyerror("NULL can only be compared with user-defined\n");
+                exit(1);
+            }
+        }
+        else if(root->left->type != root->right->type){
+            yyerror("3Type Mismatch\n");
             exit(1);
         }
     }
     else{
-        if(!(root->left->type == _INT && root->right->type == _INT)){
-            yyerror("jType Mismatch\n");
+        if((root->left->type != root->right->type) || (root->left->type != TLookup("int") && root->left->type != TLookup("str"))){
+            yyerror("4Type Mismatch\n");
             exit(1);
         }
     }
 }
-
-//global variable denoting free register count number
-int regCount = -1;
 
 int getReg(){
     printf("R%d\n",regCount+1);
@@ -446,16 +655,9 @@ void freeReg(){
     if(regCount < -1) printf("FREE < %d\n",regCount);
 }
 
-int labelCount = -1;
-
 int getLabel(){
     return ++labelCount;
 }
-
-//nested while count
-int nested_while=-1;
-
-int label_jmp[1000][2];
 
 void print(FILE *fp,int reg1){
   int reg2 = getReg();
@@ -536,7 +738,7 @@ int codeGen(struct astnode* root,FILE *fp){
       int reg = getReg();
       if(root->nodetype == _CONST){
           printf("deew%d\n",reg);
-          if(root->type == _INT){
+          if(root->type == TLookup("int")){
               fprintf(fp, "MOV R%d, %d\n", reg,root->val);
           }
           else{
@@ -876,7 +1078,7 @@ void global_declaration_code(){
 void preorder(struct astnode *root){
     printf("(");
     if(root != NULL){
-        printf("%d,%d ", root->nodetype,root->type);
+        printf("%d,%s ", root->nodetype,root->type->name);
         preorder(root->left);
         preorder(root->right);
     }
@@ -886,19 +1088,14 @@ void preorder(struct astnode *root){
 void print_Gsymbol_table(){
     struct Gsymbol* temp = GsymbolHead;
     while(temp != NULL){
-        printf("%s ", temp->name);
-        if(temp->type == _INT) printf("Int ");
-        else if(temp->type == _STRING) printf("Str ");
-        printf("%d %d\n", temp->size,temp->binding);
+        printf("%s %s ", temp->name,temp->type->name);
+        printf("%d\n", temp->size);
         if(temp->class == _FUNCTION){
             struct Paramstruct *cur = temp->paramlist;
             while(cur != NULL){
-                printf("%s ", cur->name);
-                if(cur->type == _INT) printf("Int ");
-                else if(cur->type == _STRING) printf("Str ");
+                printf("    %s %s\n", cur->name,cur->type->name);
                 cur = cur->next;
             }
-            printf("\n");
         }
         temp = temp->next;
     }
@@ -908,8 +1105,22 @@ void p(){
     struct Lsymbol* t = LsymbolHead;
     printf("#####Lsymbol####\n");
     while(t!=NULL){
-        printf("%s ",t->name);
+        printf("%s %s\n",t->name,t->type->name);
         t = t->next;
     }
     printf("\n");
+}
+
+void print_type_table(){
+    Typetable * temp = TypetableHead;
+    Fieldlist * t1;
+    while(temp != NULL){
+        printf("%s\n",temp->name);
+        t1 = temp->fields;
+        while(t1 != NULL){
+            printf("     %s %s\n",t1->name,t1->type->name);
+            t1 = t1->next;
+        }
+        temp = temp->next;
+    }
 }

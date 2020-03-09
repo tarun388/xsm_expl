@@ -1,17 +1,9 @@
 %{
-  #include "y.tab.h"
-  #include "ast.h"
+    #include "ast.h"
+    #include "y.tab.h"
 
   int number;
-  int var_type=-1;
-  int param_type=-1;
-  /* 1 declarations
-  2 code */
-  int section;
-  /* type is for function parameter or not
-  0 normal
-  1 paramater */
-  int param_on = 0;
+
 %}
 
 %%
@@ -25,19 +17,25 @@
 "/"         {return DIV;}
 "%"         {return MOD;}
 [ |\t|\n]   {}
-"("         {param_on = 1;
-            return *yytext;}
-")"         {param_on = 0;
-            return *yytext;}
-"main"      {GInstall(yytext,_INT,-1,_FUNCTION,NULL);
-            yylval.node = makeVarLeafNode(yytext);
-            yylval.node->type = _INT;
+"("         {return *yytext;}
+")"         {return *yytext;}
+"main"      {yylval.node = makeVarLeafNode(yytext);
+            yylval.node->type = TLookup("int");
             return MAIN;}
 "return"    {return RETURN;}
 "begin"     {return _BEGIN;}
 "end"       {return END;}
 "read"      {return READ;}
 "write"     {return WRITE;}
+"type"      {typeflag=1;        //for type declaration
+            return _TYPE;}
+"endtype"   {typeflag=0;        //for type declaration
+            return ENDTYPE;}
+"alloc"     {return ALLOC;}
+"free"      {return FREE;}
+"initialize" {return INITIALIZE;}
+"null"      {return __NULL;}
+"."         {return *yytext;}
 ";"         {return *yytext;}
 ","         {return *yytext;}
 "["         {return *yytext;}
@@ -65,9 +63,10 @@
 "int"       {return INT;}
 "str"       {return STR;}
 [\"][A-Za-z0-9]*[\"]            {yylval.node = makeConstStringLeafNode(yytext);
-                        return STRING;}
-[A-Za-z][A-Za-z0-9]*          {yylval.node = makeVarLeafNode(yytext);
-                        return ID;}
+                                return STRING;}
+[A-Za-z][A-Za-z0-9]*            {yylval.node = makeVarLeafNode(yytext);
+                                return ID;}
+
 .                       {printf("%c",*yytext);
                         yyerror("unknown character\n");
                         exit(1);}
