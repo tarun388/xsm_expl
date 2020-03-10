@@ -1576,7 +1576,7 @@ yyreduce:
 
   case 27:
 #line 101 "ast.y" /* yacc.c:1646  */
-    {p();Function((yyvsp[-7].node),(yyvsp[-5].node2),(yyvsp[-1].node));preorder((yyvsp[-1].node));printf("\n");/*gen_function_code($2,$8)*/;LsymbolHead=NULL;LsymbolTail=NULL;ParamHead=NULL;TypeStackPop();}
+    {p();Function((yyvsp[-7].node),(yyvsp[-5].node2),(yyvsp[-1].node));preorder((yyvsp[-1].node));printf("\n");gen_function_code((yyvsp[-7].node),(yyvsp[-1].node));LsymbolHead=NULL;LsymbolTail=NULL;ParamHead=NULL;TypeStackPop();}
 #line 1581 "y.tab.c" /* yacc.c:1646  */
     break;
 
@@ -1606,7 +1606,7 @@ yyreduce:
 
   case 32:
 #line 113 "ast.y" /* yacc.c:1646  */
-    {p();Function((yyvsp[-6].node),NULL,(yyvsp[-1].node));preorder((yyvsp[-1].node));printf("\n");/*gen_function_code($2,$7)*/;LsymbolHead=NULL;LsymbolTail=NULL;ParamHead=NULL;}
+    {p();Function((yyvsp[-6].node),NULL,(yyvsp[-1].node));preorder((yyvsp[-1].node));printf("\n");gen_function_code((yyvsp[-6].node),(yyvsp[-1].node));LsymbolHead=NULL;LsymbolTail=NULL;ParamHead=NULL;}
 #line 1611 "y.tab.c" /* yacc.c:1646  */
     break;
 

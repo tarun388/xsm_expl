@@ -98,7 +98,7 @@ FDefBlock   :   FDefBlock Fdef
             |   Fdef
             ;
 
-Fdef        :   Type ID '(' ParamList ')' '{' LdeclBlock Body '}'               {p();Function($2,$4,$8);preorder($8);printf("\n");/*gen_function_code($2,$8)*/;LsymbolHead=NULL;LsymbolTail=NULL;ParamHead=NULL;TypeStackPop();}
+Fdef        :   Type ID '(' ParamList ')' '{' LdeclBlock Body '}'               {p();Function($2,$4,$8);preorder($8);printf("\n");gen_function_code($2,$8);LsymbolHead=NULL;LsymbolTail=NULL;ParamHead=NULL;TypeStackPop();}
             ;
 
 
@@ -110,7 +110,7 @@ ParamList   :   ParamList ',' Param                                             
 Param       :   Type ID                                                         {$$ = makeParameter($2->varname,TYPE);TypeStackPop();}
             ;
 
-MainBlock   :   INT MAIN '(' ')' '{' LdeclBlock Body '}'                        {p();Function($2,NULL,$7);preorder($7);printf("\n");/*gen_function_code($2,$7)*/;LsymbolHead=NULL;LsymbolTail=NULL;ParamHead=NULL;}
+MainBlock   :   INT MAIN '(' ')' '{' LdeclBlock Body '}'                        {p();Function($2,NULL,$7);preorder($7);printf("\n");gen_function_code($2,$7);LsymbolHead=NULL;LsymbolTail=NULL;ParamHead=NULL;}
             ;
 
 LdeclBlock  :   DECL LDecList ENDDECL                                           {$$ = $2; InstallParameter();}

@@ -6,6 +6,3 @@
 0
 0
 0
-MOV SP, 4096
-JMP MAIN
-INT 10
